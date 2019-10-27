@@ -1,30 +1,117 @@
 ---
-title: "Untitled"
+title: "CSML1000 Group2 Assignment 2"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+Data Set Information:
+
+The two datasets are related to red and white variants of the Portuguese "Vinho Verde" wine. For more details, consult: [Web Link] or the reference [Cortez et al., 2009]. Due to privacy and logistic issues, only physicochemical (inputs) and sensory (the output) variables are available (e.g. there is no data about grape types, wine brand, wine selling price, etc.).
+
+These datasets can be viewed as classification or regression tasks. The classes are ordered and not balanced (e.g. there are many more normal wines than excellent or poor ones). Outlier detection algorithms could be used to detect the few excellent or poor wines. Also, we are not sure if all input variables are relevant. So it could be interesting to test feature selection methods.
+
+
+Attribute Information:
+
+For more information, read [Cortez et al., 2009].
+Input variables (based on physicochemical tests):
+1 - fixed acidity
+2 - volatile acidity
+3 - citric acid
+4 - residual sugar
+5 - chlorides
+6 - free sulfur dioxide
+7 - total sulfur dioxide
+8 - density
+9 - pH
+10 - sulphates
+11 - alcohol
+Output variable (based on sensory data):
+12 - quality (score between 0 and 10)
+
+
+
+# Imported library
+```{r}
+library(corrplot)
+library(cluster)
+library(factoextra)
 ```
 
-## GitHub Documents
-
-This is an R Markdown format used for publishing markdown documents to GitHub. When you click the **Knit** button all R code chunks are run and a markdown file (.md) suitable for publishing to GitHub is generated.
-
-## Including Code
-
-You can include R code in the document as follows:
-
-```{r cars}
-summary(cars)
+# Load dataset
+```{r}
+data <- read.csv('./data/winequality-red.csv', header=TRUE, sep = ";")
+head(data, 5)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+# Structure of data
+```{r}
+data <- na.omit(data)
+data[12] <- lapply(data[12], as.numeric)
+str(data)
+summary(data)
+```
+# Corr Matrix
+```{r}
+corrmatrix <- cor(data)
+corrplot(corrmatrix, method = 'pie')
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Data preparation
+All the atrributes are of same scale except "Free. sulfur dioxide and totol sulfur.dioxide", therefore we can can ignore those two variables
+for clustering and normalization is not required.
+
+```{r}
+data <- data[-c(6,7)]
+head(data, 5)
+```
+
+
+# Clustring and caculate silhouette score
+## Visualization of
+```{r}
+```
+
+
+
+```{r}
+silhouette_score <- function(k){
+  km <- kmeans(data, centers = k, nstart=25)
+  ss <- silhouette(km$cluster, dist(data))
+  mean(ss[, 3])
+}
+k <- 2:10
+avg_sil <- sapply(k, silhouette_score)
+plot(k, type='b', avg_sil, xlab='Number of clusters', ylab='Average Silhouette Scores', frame=FALSE)
+```
+
+Show Optimal number of clusters
+```{r}
+fviz_nbclust(data, kmeans, method='silhouette')
+```
+
+
+# Actual clustring
+```{r}
+km.final <- kmeans(data, 2)
+
+## Total Within cluster sum of square
+km.final$tot.withinss
+
+## Cluster sizes
+km.final$size
+data$cluster <- km.final$cluster
+head(data, 6)
+```
+```{r}
+corrmatrix <- cor(data)
+corrplot(corrmatrix, method = 'pie')
+```
+
+
+```{r}
+fviz_cluster(km.final, data=data)
+clusplot(data, data$cluster, color=TRUE, shade = TRUE, label=2)
+```
+
+# Conclusion
+  We had seen kmeans clustering of wine data and how average silhouette measure is used to identify optimal number of clusters. 
