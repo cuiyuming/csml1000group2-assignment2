@@ -72,7 +72,7 @@ ggplot(melt_data, mapping = aes(x = value)) + geom_histogram(bins = 10) + facet_
 
 boxplot(raw[,-c(1)])
 
-#above shows that free.sulfur and total.sulfur are wildly different scales
+#above shows that total.sulfur has outliers
 
 # IMPORTANT above shows data needs scaling
 
@@ -90,7 +90,9 @@ corrplot(corrmatrix, method = 'number',type="upper")
 #fixed acidity - citric acid
 #fixed acidity - density
 #free.sulfur.dioxide-total.sulfur.dioxide
-#we will keep them in
+#we will remove fixed acidity and total.sulfur later
+data <- data[-c(1,7)]
+
 
 #above are visualized and validated via plot
 plot(data)
@@ -110,7 +112,19 @@ data_scaled <- data.frame(scale(data))
 #visualize how well data was scaled
 boxplot(data_scaled)
 #scaling looks good
-#TODO need to remove outliers
+
+#remove outliers
+
+#For missing values that lie outside the 1.5 * IQR limits
+#we could cap it by replacing those observations outside the lower limit
+#with the value of 5th %ile and those that lie above the upper limit,
+#with the value of 95th %ile. Below is a sample code that achieves this.
+
+#x <- data$volatile.acidity
+#qnt <- quantile(x, probs=c(.25, .75), na.rm = T)
+#caps <- quantile(x, probs=c(.05, .95), na.rm = T)
+#H <- 1.5 * IQR(x, na.rm = T)
+#x[x < (qnt[1] - H)]  (qnt[2] + H)] <- caps[2]
 
 ```
 
@@ -131,7 +145,7 @@ rdacb.kmeans.plot <- function (datafornumclusters, num_clust = 15, seed = 9876) 
 
 rdacb.kmeans.plot(data_scaled)
 
-# ##### we see an elbow at 13
+# ##### we see an elbow at 12
 
 ```
 
@@ -148,7 +162,7 @@ data_pca1 <- princomp(data_scaled)
 #inspect principal components
 # loadings shows variance and and how much each variable contributes to each components
 loadings(data_pca1)
-# #### above shows that first 10 give us 90% of the variance
+# #### above shows that first 8 give us 89% of the variance
 # we don't see one variable being overbearing
 
 #plot
@@ -162,7 +176,7 @@ biplot(data_pca1, col = c("gray", "black"))
 # ##### build pca using prcomp
 data_pca2 <- prcomp(data_scaled)
 summary(data_pca2)
-#above shows first 7 account for 90% variance
+#above shows first 6 account for 88% variance
 
 #plot
 plot(data_pca2)
@@ -171,7 +185,6 @@ plot(data_pca2, type = "lines")
 #biplot
 biplot(data_pca2, col = c("gray", "black"))
 #above shows first 7 account for 90% variance
-
 
 # ###### using prcomp: first 7 give us 90% of the variance
 
@@ -185,11 +198,14 @@ components <- data.frame(data_pca2$x[,1:7])
 
 # Clustering
 ```{r}
-datatocluster <- data_scaled
+datatocluster <- components
 
-k <- kmeans(datatocluster, 13, nstart=25, iter.max=10000)
+k <- kmeans(datatocluster, 12, nstart=25, iter.max=10000)
 
 k
+
+#pairwise plot
+pairs(datatocluster, col=c(1:5)[k$cluster])
 
 # Plot
 plotcluster(  datatocluster
@@ -203,6 +219,7 @@ plotcluster(  datatocluster
 
 # Cluster sizes
 sort(table(k$cluster))
+
 
 ```
 
