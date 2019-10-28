@@ -118,15 +118,16 @@ boxplot(data_scaled)
 # determine number of Clusters
 ```{r}
 
-datafornumclusters <- data
-wssplot <- function(datafornumclusters, nc=20, seed=14678){
-  wss <- (nrow(datafornumclusters)-1)*sum(apply(datafornumclusters,2,var))
-  for (i in 2:nc){
-    set.seed(seed)
-    wss[i] <- sum(kmeans(datafornumclusters, centers=i)$withinss)}
-  plot(1:nc, wss, type="b", xlab="Number of Clusters",
-       ylab="Within groups sum of squares")}
-wssplot(datafornumclusters, nc=20) 
+datafornumclusters <- data_scaled
+
+# Determine number of clusters
+wss <- (nrow(datafornumclusters)-1)*sum(apply(datafornumclusters,2,var))
+for (i in 2:15) wss[i] <- sum(kmeans(datafornumclusters,
+                                     centers=i)$withinss)
+plot(1:15, wss, type="b", xlab="Number of Clusters",
+     ylab="Within groups sum of squares")
+
+#wssplot(datafornumclusters, nc=20) 
 
 # ##### we see an elbow at 4
 
