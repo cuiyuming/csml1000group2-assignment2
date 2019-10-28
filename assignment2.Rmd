@@ -41,20 +41,24 @@ library(factoextra)
 ```{r}
 data <- read.csv('./data/winequality-red.csv', header=TRUE, sep = ";")
 head(data, 5)
+summary(data)
 ```
 
 # Structure of data
 ```{r}
-data <- na.omit(data)
-data[12] <- lapply(data[12], as.numeric)
+#no NAs or Nans or blanks found
 str(data)
-summary(data)
+nrow(data)
 ```
-# Corr Matrix
+
+# visualizations - corr matrix
 ```{r}
-corrmatrix <- cor(data)
-corrplot(corrmatrix, method = 'pie')
+corrmatrix <- cor(data[,-12])
+corrplot(corrmatrix, method = 'pie',type="upper")
+corrplot(corrmatrix, method = 'number',type="upper")
+
 ```
+
 
 # Data preparation
 All the atrributes are of same scale except "Free. sulfur dioxide and totol sulfur.dioxide", therefore we can can ignore those two variables
@@ -62,7 +66,31 @@ for clustering and normalization is not required.
 
 ```{r}
 data <- data[-c(6,7)]
-head(data, 5)
+
+```
+
+# PCA and reduction
+```{r}
+#build pca
+data_pca <- prcomp(data[,-10], scale = TRUE)
+#examine rotations
+print(data_pca)
+#examine the importance of PCs
+summary(data_pca)
+
+# ###### IMPORTANT - based on proportion, first 5 give us 85% of the variance
+
+
+#plot
+plot(data_pca)
+# scree plot
+plot(data_pca, type = "lines")
+#biplot
+biplot(data_pca, col = c("gray", "black"))
+#see computed pc values 
+head(data_pca$x, 3)
+#we can do predictions for new data
+#predict(data_pca, newdata = …)
 ```
 
 
