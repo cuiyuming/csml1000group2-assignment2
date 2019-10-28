@@ -35,13 +35,23 @@ Output variable (based on sensory data):
 library(corrplot)
 library(cluster)
 library(factoextra)
+library(reshape2)
+library(tidyverse)
+library(RColorBrewer)
+library(scales)
+library(fpc)
 ```
 
 # Load dataset
 ```{r}
-data <- read.csv('./data/winequality-red.csv', header=TRUE, sep = ";")
-head(data, 5)
-summary(data)
+raw <- read.csv('./data/winequality-red.csv', header=TRUE, sep = ";")
+#add rowid
+raw <- tibble::rowid_to_column(raw, "ROWID")
+head(raw, 5)
+summary(raw)
+
+#numeric data, last variable is quality which is dependent variable 
+data <- raw[-c(1,13)]
 ```
 
 # Structure of data
@@ -51,62 +61,161 @@ str(data)
 nrow(data)
 ```
 
-# visualizations - corr matrix
+
+# visualizations
 ```{r}
-corrmatrix <- cor(data[,-12])
-corrplot(corrmatrix, method = 'pie',type="upper")
+
+#Melt data
+melt_data = melt(raw, id.vars=c("ROWID"))
+#visualize spread of data
+ggplot(melt_data, mapping = aes(x = value)) + geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
+
+boxplot(raw[,-c(1)])
+
+#above shows that free.sulfur and total.sulfur are wildly different scales
+
+# IMPORTANT above shows data needs scaling
+
+
+```
+
+
+# correlations
+```{r}
+
+#corr of data
+corrmatrix <- cor(data)
 corrplot(corrmatrix, method = 'number',type="upper")
+#moderate corr of 0.6ish for following
+#fixed acidity - citric acid
+#fixed acidity - density
+#free.sulfur.dioxide-total.sulfur.dioxide
+#we will keep them in
+
+#above are visualized and validated via plot
+plot(data)
+
 
 ```
 
 
 # Data preparation
-All the atrributes are of same scale except "Free. sulfur dioxide and totol sulfur.dioxide", therefore we can can ignore those two variables
-for clustering and normalization is not required.
 
 ```{r}
-data <- data[-c(6,7)]
+
+
+#scale data, 13th variable is quality which is a dependent variable
+data_scaled <- data.frame(scale(data))
+
+#visualize how well data was scaled
+boxplot(data_scaled)
+#scaling looks good
+#TODO need to remove outliers
 
 ```
+
+
+# determine number of Clusters
+```{r}
+
+datafornumclusters <- data
+wssplot <- function(datafornumclusters, nc=20, seed=14678){
+  wss <- (nrow(datafornumclusters)-1)*sum(apply(datafornumclusters,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(datafornumclusters, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+wssplot(datafornumclusters, nc=20) 
+
+# ##### we see an elbow at 4
+
+```
+
 
 # PCA and reduction
 ```{r}
-#build pca
-data_pca <- prcomp(data[,-10], scale = TRUE)
+
+# ##### build pca using princomp
+data_pca1 <- princomp(data_scaled)
 #examine rotations
-print(data_pca)
+#print(data_pca)
 #examine the importance of PCs
-summary(data_pca)
-
-# ###### IMPORTANT - based on proportion, first 5 give us 85% of the variance
-
+#summary(data_pca)
+#inspect principal components
+# loadings shows variance and and how much each variable contributes to each components
+loadings(data_pca1)
+# #### above shows that first 10 give us 90% of the variance
+# we don't see one variable being overbearing
 
 #plot
-plot(data_pca)
+plot(data_pca1)
 # scree plot
-plot(data_pca, type = "lines")
+plot(data_pca1, type = "lines")
 #biplot
-biplot(data_pca, col = c("gray", "black"))
-#see computed pc values 
-head(data_pca$x, 3)
-#we can do predictions for new data
-#predict(data_pca, newdata = …)
+biplot(data_pca1, col = c("gray", "black"))
+# ###### using princomp first 10 give us 90% of the variance
+
+# ##### build pca using prcomp
+data_pca2 <- prcomp(data_scaled)
+summary(data_pca2)
+#above shows first 7 account for 90% variance
+
+#plot
+plot(data_pca2)
+# scree plot
+plot(data_pca2, type = "lines")
+#biplot
+biplot(data_pca2, col = c("gray", "black"))
+#above shows first 7 account for 90% variance
+
+
+# ###### using prcomp: first 7 give us 90% of the variance
+
+# First 7 principal components
+components <- data.frame(data_pca2$x[,1:7])
+#plot(components, pch=16, col=rgb(0,0,0,0.5))
+
 ```
 
-# Clustring and caculate silhouette score
-## Visualization of
+
+
+# Clustering
+```{r}
+datatocluster <- data[-c(1,13)]
+
+k <- kmeans(datatocluster, 4, nstart=25, iter.max=10000)
+#plot(data_scaled, col=k$cluster, pch=16)
+#we see above 1 outlier cluster
+
+clusplot(datatocluster, k$cluster, main='Clusters',
+         color=TRUE, shade=TRUE,
+         labels=2, lines=0)
+
+# Cluster sizes
+sort(table(k$cluster))
+
+# Plot
+plotcluster(  datatocluster
+            , k$cluster
+            , pch = k$cluster
+            , clvecd=c(1,2,3,4)
+            , col=c("blue","green","purple","red"))
+```
+
+# Clustering
 ```{r}
 
-set.seed(1020)
-#use 5 clusters for now, will refine later in code
-fit <- kmeans(data, 5)
+set.seed(12345)
+#use 10 clusters to start with
+fit <- kmeans(components, 15)
 # Examine the fit object – produces a lot of output
 fit
-#these clusters account for 62% variability
+#these clusters account for 98.5% variability
 #pairwise plot see clustering
-pairs(data, col=c(1:5)[fit$cluster])
-#thats too crowded, lets try first 2 pcs
-clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
+#pairs(data, col=c(1:10)[fit$cluster])
+#lets try something else
+#clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
 
 #elbow function to find best k
 rdacb.kmeans.plot <- function (data, num_clust = 15, seed = 9876) {
@@ -121,61 +230,25 @@ rdacb.kmeans.plot <- function (data, num_clust = 15, seed = 9876) {
 #show elbow chart
 rdacb.kmeans.plot(data)
 
-#seeing an elbow at 11 
-set.seed(1020)
-fit <- kmeans(data, 11)
+# ###### Seeing an elbow at 4, will use 4 as cluster size 
+
+
+```
+
+
+
+```{r}
+
+fit <- kmeans(data, 4)
 # Examine the fit object – produces a lot of output
 fit
-#these clusters account for 77% variability
-clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
+#these clusters account for 98.5% variability
+#pairwise plot see clustering
+#pairs(data, col=c(1:10)[fit$cluster])
+#lets try something else
+#clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
 
 
-```
-
-
-# Clustring and caculate silhouette score
-## Visualization of
-```{r}
-```
-
-
-
-```{r}
-silhouette_score <- function(k){
-  km <- kmeans(data, centers = k, nstart=25)
-  ss <- silhouette(km$cluster, dist(data))
-  mean(ss[, 3])
-}
-k <- 2:10
-avg_sil <- sapply(k, silhouette_score)
-plot(k, type='b', avg_sil, xlab='Number of clusters', ylab='Average Silhouette Scores', frame=FALSE)
-```
-
-Show Optimal number of clusters
-```{r}
-fviz_nbclust(data, kmeans, method='silhouette')
-```
-
-
-# Actual clustring
-```{r}
-km.final <- kmeans(data, 2)
-
-## Total Within cluster sum of square
-km.final$tot.withinss
-
-## Cluster sizes
-km.final$size
-data$cluster <- km.final$cluster
-head(data, 6)
-```
-```{r}
-corrmatrix <- cor(data)
-corrplot(corrmatrix, method = 'pie')
-```
-
-
-```{r}
 fviz_cluster(km.final, data=data)
 clusplot(data, data$cluster, color=TRUE, shade = TRUE, label=2)
 ```
