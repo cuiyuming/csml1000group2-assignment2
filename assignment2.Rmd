@@ -104,7 +104,7 @@ plot(data)
 ```{r}
 
 
-#scale data, 13th variable is quality which is a dependent variable
+#scale data
 data_scaled <- data.frame(scale(data))
 
 #visualize how well data was scaled
@@ -118,18 +118,20 @@ boxplot(data_scaled)
 # determine number of Clusters
 ```{r}
 
-datafornumclusters <- data_scaled
 
-# Determine number of clusters
-wss <- (nrow(datafornumclusters)-1)*sum(apply(datafornumclusters,2,var))
-for (i in 2:15) wss[i] <- sum(kmeans(datafornumclusters,
-                                     centers=i)$withinss)
-plot(1:15, wss, type="b", xlab="Number of Clusters",
-     ylab="Within groups sum of squares")
+rdacb.kmeans.plot <- function (datafornumclusters, num_clust = 15, seed = 9876) {
+  set.seed(seed)
+  ss <- numeric(num_clust)
+  ss[1] <- (nrow(datafornumclusters) - 1) * sum(apply(datafornumclusters, 2, var))
+  for (i in 2:num_clust) {
+    ss[i] <- sum(kmeans(datafornumclusters, centers = i)$withinss)
+  }
+  plot(1:num_clust, ss, type = "b", pch = 18, xlab = "# Clusters", ylab = "Total within_ss across clusters")
+}
 
-#wssplot(datafornumclusters, nc=20) 
+rdacb.kmeans.plot(data_scaled)
 
-# ##### we see an elbow at 4
+# ##### we see an elbow at 13
 
 ```
 
@@ -183,76 +185,29 @@ components <- data.frame(data_pca2$x[,1:7])
 
 # Clustering
 ```{r}
-datatocluster <- data[-c(1,13)]
+datatocluster <- data_scaled
 
-k <- kmeans(datatocluster, 4, nstart=25, iter.max=10000)
-#plot(data_scaled, col=k$cluster, pch=16)
-#we see above 1 outlier cluster
+k <- kmeans(datatocluster, 13, nstart=25, iter.max=10000)
 
-clusplot(datatocluster, k$cluster, main='Clusters',
-         color=TRUE, shade=TRUE,
-         labels=2, lines=0)
-
-# Cluster sizes
-sort(table(k$cluster))
+k
 
 # Plot
 plotcluster(  datatocluster
             , k$cluster
             , pch = k$cluster
-            , clvecd=c(1,2,3,4)
-            , col=c("blue","green","purple","red"))
-```
+            )
 
-# Clustering
-```{r}
+#clusplot(datatocluster, k$cluster, main='Clusters',
+#         color=TRUE, shade=TRUE,
+#         labels=2, lines=0)
 
-set.seed(12345)
-#use 10 clusters to start with
-fit <- kmeans(components, 15)
-# Examine the fit object – produces a lot of output
-fit
-#these clusters account for 98.5% variability
-#pairwise plot see clustering
-#pairs(data, col=c(1:10)[fit$cluster])
-#lets try something else
-#clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
-
-#elbow function to find best k
-rdacb.kmeans.plot <- function (data, num_clust = 15, seed = 9876) {
-  set.seed(seed)
-  ss <- numeric(num_clust)
-  ss[1] <- (nrow(data) - 1) * sum(apply(data, 2, var))
-  for (i in 2:num_clust) {
-    ss[i] <- sum(kmeans(data, centers = i)$withinss)
-  }
-  plot(1:num_clust, ss, type = "b", pch = 18, xlab = "# Clusters", ylab = "Total within_ss across clusters")
-}
-#show elbow chart
-rdacb.kmeans.plot(data)
-
-# ###### Seeing an elbow at 4, will use 4 as cluster size 
-
+# Cluster sizes
+sort(table(k$cluster))
 
 ```
 
 
 
-```{r}
-
-fit <- kmeans(data, 4)
-# Examine the fit object – produces a lot of output
-fit
-#these clusters account for 98.5% variability
-#pairwise plot see clustering
-#pairs(data, col=c(1:10)[fit$cluster])
-#lets try something else
-#clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
-
-
-fviz_cluster(km.final, data=data)
-clusplot(data, data$cluster, color=TRUE, shade = TRUE, label=2)
-```
 
 # Conclusion
   We had seen kmeans clustering of wine data and how average silhouette measure is used to identify optimal number of clusters. 
