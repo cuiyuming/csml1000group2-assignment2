@@ -93,6 +93,45 @@ head(data_pca$x, 3)
 #predict(data_pca, newdata = …)
 ```
 
+# Clustring and caculate silhouette score
+## Visualization of
+```{r}
+
+set.seed(1020)
+#use 5 clusters for now, will refine later in code
+fit <- kmeans(data, 5)
+# Examine the fit object – produces a lot of output
+fit
+#these clusters account for 62% variability
+#pairwise plot see clustering
+pairs(data, col=c(1:5)[fit$cluster])
+#thats too crowded, lets try first 2 pcs
+clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
+
+#elbow function to find best k
+rdacb.kmeans.plot <- function (data, num_clust = 15, seed = 9876) {
+  set.seed(seed)
+  ss <- numeric(num_clust)
+  ss[1] <- (nrow(data) - 1) * sum(apply(data, 2, var))
+  for (i in 2:num_clust) {
+    ss[i] <- sum(kmeans(data, centers = i)$withinss)
+  }
+  plot(1:num_clust, ss, type = "b", pch = 18, xlab = "# Clusters", ylab = "Total within_ss across clusters")
+}
+#show elbow chart
+rdacb.kmeans.plot(data)
+
+#seeing an elbow at 11 
+set.seed(1020)
+fit <- kmeans(data, 11)
+# Examine the fit object – produces a lot of output
+fit
+#these clusters account for 77% variability
+clusplot(data, fit$cluster, color = TRUE, shade = TRUE, labels=0, lines=0)
+
+
+```
+
 
 # Clustring and caculate silhouette score
 ## Visualization of
