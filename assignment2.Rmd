@@ -72,7 +72,7 @@ nrow(data)
 #Melt data
 melt_data = melt(raw, id.vars=c("ROWID"))
 #visualize spread of data
-ggplot(melt_data, mapping = aes(x = value)) + geom_histogram(bins = 10) + facet_wrap(~variable, scales = 'free_x')
+ggplot(melt_data, mapping = aes(x = value)) + geom_histogram(bins = 100) + facet_wrap(~variable, scales = 'free_x')
 
 boxplot(raw[,-c(1)])
 
@@ -107,7 +107,7 @@ rosnerTest(data$alcohol, k = 4, warn = F)
 
 #corr of data
 corrmatrix <- cor(data)
-corrplot(corrmatrix, method = 'number',type="upper")
+corrplot(corrmatrix, method = 'number', type="upper")
 #moderate corr of 0.6ish for following
 #fixed acidity - citric acid
 #fixed acidity - density
@@ -275,8 +275,8 @@ clusplot(datatovisualize1, fit$cluster,cex=1,xlab=colnames(datatovisualize1)[1],
 #put quality back in data
 datatovisualize1$quality <- raw$quality
 
-old.par <- par(mar = c(0, 0, 0, 0))
-par(mfrow=c(5,2))
+old.par <- par(mar = c(2, 2, 2, 2))
+par(mfrow=c(2,2))
 
 
 for(i in 1:10){
@@ -338,8 +338,8 @@ clusplot(datatovisualize2, groups, main='Clusters')
 
 #put quality back in data
 datatovisualize2$quality <- raw$quality
-
-par(mfrow=c(5,2))
+par(old.par)
+par(mfrow=c(2,2))
 
 
 for(i in 1:10){
