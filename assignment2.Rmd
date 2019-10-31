@@ -1,7 +1,7 @@
 ---
 title: "CSML1000 Group2 Assignment 2 Due this Sunday"
 output: github_document
-Author: Yuming, Pratik
+Author: Yuming, Pratik, Madan, Rajiv, Konstantin
 ---
 
 Data Set Information:
