@@ -1,7 +1,8 @@
 ---
 title: "CSML1000 Group2 Assignment 2 Due this Sunday"
 output: github_document
-Author: Yuming, Pratik
+Author: Yuming, Pratik, Madan, Rajiv, Konstantin
+Date: October 30, 2019
 ---
 
 Data Set Information:
