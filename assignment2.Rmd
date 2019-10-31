@@ -272,6 +272,8 @@ pairs(datatovisualize, col=c("red","blue","green","yellow")[fit$cluster])
 
 #put quality back in data
 datatovisualize$quality <- raw$quality
+#put cluster back into raw data so we can save raw data and sue in shiny app
+raw$cluster_kmeans=fit$cluster
 
 par(mfrow=c(5,2))
 
