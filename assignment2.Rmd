@@ -33,7 +33,7 @@ Output variable (based on sensory data):
 
 
 # Imported library
-```{r}
+```{r warning = FALSE}
 library(corrplot)
 library(cluster)
 library(factoextra)
