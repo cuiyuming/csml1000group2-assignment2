@@ -30,10 +30,26 @@ Input variables (based on physicochemical tests):
 Output variable (based on sensory data):
 12 - quality (score between 0 and 10)
 
+# Install packages
+```{r warning = FALSE}
+# install.packages('corrplot', dependencies = TRUE)
+# install.packages('cluster', dependencies = TRUE)
+# install.packages('factoextra', dependencies = TRUE)
+# install.packages('reshape2', dependencies = TRUE)
+# install.packages('tidyverse', dependencies = TRUE)
+# install.packages('RColorBrewer', dependencies = TRUE)
+# install.packages('scales', dependencies = TRUE)
+# install.packages('fpc', dependencies = TRUE)
+# install.packages('EnvStats', dependencies = TRUE)
+# install.packages('NbClust', dependencies = TRUE)
+# install.packages('dendextend', dependencies = TRUE)
+install.packages('ClusterR', dependencies = TRUE)
+```
 
 
 # Imported library
 ```{r warning = FALSE}
+
 library(corrplot)
 library(cluster)
 library(factoextra)
@@ -44,18 +60,22 @@ library(scales)
 library(fpc)
 library(EnvStats)
 library(NbClust)
+library(dendextend)
+library(gtools)
+library(ClusterR)
 ```
 
 # Load dataset
 ```{r}
-raw <- read.csv('./data/winequality-red.csv', header=TRUE, sep = ";")
+raw <- read.csv('./data/wine-with-type-location.csv', header=TRUE, sep = ";")
 #add rowid
 raw <- tibble::rowid_to_column(raw, "ROWID")
 head(raw, 5)
 summary(raw)
 
 #numeric data, last variable is quality which is dependent variable 
-data <- raw[-c(1,13)]
+data <- raw[c(1:12)]
+summary(data)
 ```
 
 # Structure of data
@@ -70,11 +90,11 @@ nrow(data)
 ```{r}
 
 #Melt data
-melt_data = melt(raw, id.vars=c("ROWID"))
+melt_data = melt(data, id.vars=c("ROWID"))
 #visualize spread of data
-ggplot(melt_data, mapping = aes(x = value)) + geom_histogram(bins = 100) + facet_wrap(~variable, scales = 'free_x')
+ggplot(melt_data,  mapping = aes(x = value)) + geom_bar(fill = "#FF6666") + facet_wrap(~variable, scales = 'free_x')
 
-boxplot(raw[,-c(1)])
+boxplot(data[,-c(1)])
 
 # above shows data needs scaling and has outliers
 
@@ -107,7 +127,7 @@ rosnerTest(data$alcohol, k = 4, warn = F)
 
 #corr of data
 corrmatrix <- cor(data)
-corrplot(corrmatrix, method = 'number', type="upper")
+corrplot(corrmatrix, method = 'pie', type="upper")
 #moderate corr of 0.6ish for following
 #fixed acidity - citric acid
 #fixed acidity - density
@@ -122,8 +142,9 @@ plot(data)
 
 ```
 
-
+# ###########################################################
 # Data preparation
+# ###########################################################
 
 ```{r}
 #replace outliers with 5th and 95th percentile values
@@ -142,7 +163,7 @@ capOutlier <- function(x){
 data$volatile.acidity=capOutlier(data$volatile.acidity)
 data$residual.sugar=capOutlier(data$residual.sugar)
 data$chlorides=capOutlier(data$chlorides)
-data$free.sulfur.dioxide=capOutlier(data$free.sulfur.dioxide)
+data$total.sulfur.dioxide=capOutlier(data$total.sulfur.dioxide)
 data$density=capOutlier(data$density)
 data$pH=capOutlier(data$pH)
 data$sulphates=capOutlier(data$sulphates)
@@ -159,22 +180,44 @@ boxplot(data_scaled)
 ```
 
 
+```{r}
+silhouette_score <- function(k){
+  km <- kmeans(data, centers = k, nstart=25)
+  ss <- silhouette(km$cluster, dist(data_scaled))
+  mean(ss[, 3])
+}
+k <- 2:10
+avg_sil <- sapply(k, silhouette_score)
+plot(k, type='b', avg_sil, xlab='Number of clusters', ylab='Average Silhouette Scores', frame=FALSE)
+```
 
+Show Optimal number of clusters
+```{r}
+fviz_nbclust(data_scaled, kmeans, method='silhouette')
+```
+
+
+# ###########################################################
 # PCA and reduction
+# ###########################################################
 ```{r}
 
 # ##### build pca using princomp
 data_pca1 <- princomp(data_scaled)
-#examine rotations
-#print(data_pca)
+
 #examine the importance of PCs
-#summary(data_pca)
+summary(data_pca1)
+
 #inspect principal components
 # loadings shows variance and and how much each variable contributes to each components
 loadings(data_pca1)
+fviz_pca_var(data_pca1,
+             col.var = "contrib", # Color by contributions to the PC
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
 # #### above shows that first 8 give us 89% of the variance
 # we don't see one variable being overbearing
-
 #plot
 plot(data_pca1)
 # scree plot
@@ -194,6 +237,12 @@ plot(data_pca2)
 plot(data_pca2, type = "lines")
 #biplot
 biplot(data_pca2, col = c("gray", "black"))
+
+fviz_pca_var(data_pca2,
+             col.var = "contrib", # Color by contributions
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE     # Avoid text overlapping
+             )
 #above shows first 7 account for 90% variance
 
 # ####PCA didnt really didnt help at all because of the number of components
@@ -204,6 +253,9 @@ biplot(data_pca2, col = c("gray", "black"))
 
 ```
 
+# ###########################################################
+# Clustering using kmeans
+# ###########################################################
 
 # determine number of Clusters
 
@@ -234,28 +286,20 @@ k=4;
 
 ```
 
-# #############################
-# Clustering using kmeans
 
 ```{r}
-
-fit <- kmeans(datatocluster, k, nstart=25, iter.max=1000)
-
+fit <- kmeans(datatocluster, k, nstart=25, iter.max=200)
 fit
-
-
 # Cluster sizes
 sort(table(fit$cluster))
-
 ```
 
-
+# ###########################################################
 # visualize and analyze clusters generated by kmeans
+# ###########################################################
 ```{r}
-
 # ####PCA didnt really didnt help at all because of the number of components
 # We were hoping for a reduction down to 3 - 5 components
-#sigh..
 #stick with scaled data
 
 datatovisualize1 <- data_scaled
@@ -298,27 +342,48 @@ raw$cluster_kmeans=fit$cluster
 ```
 
 
-# #############################
+# ###########################################################
 # Clustering using Hierarchical Clustering
+# ###########################################################
 
 ```{r}
 #we implement a Ward’s hierarchical clustering procedure:
 #distance matrix
-d <- dist(data_scaled,method = "euclidean") 
+d <- dist(data_scaled, method = "euclidean") 
 #clustering
 h_clust <- hclust(d, method = "ward.D2") 
 
 
-#display dendrogram
+#display dendrogram with cut rects
 plot(h_clust)
-#extract clusters
-groups <- cutree(h_clust,k=4)
-groups
+rect.hclust(h_clust , k = 5, border = 2:8)
+abline(h = 5, col = 'red')
 
+#Display clusters in different colors
+
+avg_dend_obj <- as.dendrogram(h_clust)
+avg_col_dend <- color_branches(avg_dend_obj, h =  40)
+plot(avg_col_dend)
+
+library(dendextend)
+#extract clusters
+groups <- cutree(h_clust,k=5)
+ 
+# count number of instances in each group
+data_df_cl <- mutate(data, cluster = groups)
+count(data_df_cl, cluster)
+
+# We can analysis the quality and
+summary(data_df_cl)
+
+ggplot(data_df_cl, aes(x=density, y = residual.sugar , color = factor(cluster))) + geom_point()
+clusplot(data_df_cl, fit$cluster,cex=1,xlab=colnames(data_df_cl)[1],ylab=colnames(data_df_cl)[2],col.p=groups,lines=0,labels=1)
 
 ```
 
+# ###################################################################
 # visualize and analyze clusters generated by hierarchical clustering
+# ###################################################################
 ```{r}
 # ####PCA didnt really didnt help at all because of the number of components
 # We were hoping for a reduction down to 3 - 5 components
@@ -326,7 +391,6 @@ groups
 #stick with scaled data
 
 datatovisualize2 <- data_scaled
-
 
 # 2D representation of the Segmentation:
 clusplot(datatovisualize2, groups, main='Clusters')
@@ -340,7 +404,6 @@ clusplot(datatovisualize2, groups, main='Clusters')
 datatovisualize2$quality <- raw$quality
 par(old.par)
 par(mfrow=c(2,2))
-
 
 for(i in 1:10){
   boxplot(datatovisualize2[,i] ~ groups,
@@ -357,26 +420,11 @@ par(old.par)
 
 #put cluster back into raw data so we can save raw data and show in shiny app
 raw$cluster_hclust=groups
-
 #TODO save data to file to load in shiny
 
-```
 
-
-# #############################
-# Clustering using another method
-
-```{r}
-
-
-```
-
-# visualize and analyze clusters generated by method
-```{r}
-
+save(raw, file = "./data/shiny.RData")
 
 ```
 
 
-# Conclusion
-  We had seen kmeans clustering of wine data and how average silhouette measure is used to identify optimal number of clusters. 
