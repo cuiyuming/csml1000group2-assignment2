@@ -1,37 +1,12 @@
 ---
-title: "CSML1000 Group2 Assignment 2 Due this Sunday"
-output: github_document
-Author: Yuming, Pratik, Madan, Rajiv, Konstantin
-Date: October 30, 2019
+title: "CSML1000-003-O-F19 - Group 2 - Assignment 2"
+author: "Rajiv Kaushik, Yuming Cui, Madana Bolla, Pratik Chandwani, Konstantin Krassavine"
+date: November 3, 2019
+output: html_document
 ---
 
-Data Set Information:
-
-The two datasets are related to red and white variants of the Portuguese "Vinho Verde" wine. For more details, consult: [Web Link] or the reference [Cortez et al., 2009]. Due to privacy and logistic issues, only physicochemical (inputs) and sensory (the output) variables are available (e.g. there is no data about grape types, wine brand, wine selling price, etc.).
-
-These datasets can be viewed as classification or regression tasks. The classes are ordered and not balanced (e.g. there are many more normal wines than excellent or poor ones). Outlier detection algorithms could be used to detect the few excellent or poor wines. Also, we are not sure if all input variables are relevant. So it could be interesting to test feature selection methods.
-
-
-Attribute Information:
-
-For more information, read [Cortez et al., 2009].
-Input variables (based on physicochemical tests):
-1 - fixed acidity
-2 - volatile acidity
-3 - citric acid
-4 - residual sugar
-5 - chlorides
-6 - free sulfur dioxide
-7 - total sulfur dioxide
-8 - density
-9 - pH
-10 - sulphates
-11 - alcohol
-Output variable (based on sensory data):
-12 - quality (score between 0 and 10)
-
+```{r warning = FALSE, echo=FALSE}
 # Install packages
-```{r warning = FALSE}
 # install.packages('corrplot', dependencies = TRUE)
 # install.packages('cluster', dependencies = TRUE)
 # install.packages('factoextra', dependencies = TRUE)
@@ -43,13 +18,11 @@ Output variable (based on sensory data):
 # install.packages('EnvStats', dependencies = TRUE)
 # install.packages('NbClust', dependencies = TRUE)
 # install.packages('dendextend', dependencies = TRUE)
-install.packages('ClusterR', dependencies = TRUE)
+# install.packages('ClusterR', dependencies = TRUE)
 ```
 
-
-# Imported library
-```{r warning = FALSE}
-
+# Import libraries
+```{r warning = FALSE, message=FALSE, warning=FALSE}
 library(corrplot)
 library(cluster)
 library(factoextra)
@@ -63,88 +36,136 @@ library(NbClust)
 library(dendextend)
 library(gtools)
 library(ClusterR)
+library(dendextend)
 ```
 
-# Load dataset
+## Introduction
+The dataset is related to variety of wine variants. The goal is to model wine quality based on physicochemical tests.
+
+## Objective
+These datasets can be viewed as classification or regression tasks. The classes are ordered and not balanced (e.g. there are many more normal wines than excellent or poor ones). Outlier detection algorithms could be used to detect the few excellent or poor wines. Also, we are not sure if all input variables are relevant. So it could be interesting to test feature selection methods.
+
+
+# Data Analysis
+The data set contains 18 variables that involve wine realted attributes.
+
+## Data Dictionary
+
+Column Name             | Description 
+------------------------|------------------------------------------------|
+1 - fixed acidity       | fixed acidity of the wine                      |
+2 - volatile acidity    | volatile acidity of the wine                   |
+3 - citric acid         | citric acid in wine observation                |
+4 - residual sugar      | residual sugar in wine                         |
+5 - chlorides           | cholorides in wine                             |
+6 - free sulfur dioxide | free sulfur dioxide                            |
+7 - total sulfur dioxide| total sulfur dioxide                           |
+8 - density             | Wine density                                   |
+9 - pH                  | Wine pH value                                  |
+10 - sulphates          | sulphates in wine                              |
+11 - alcohol            | Wine alchocoal level                           |
+12 - #add rowid (0 to 10)  | wien quality based on based on sensory data)   |
+13 - country            | country origin of wine                         |
+14 - province           | province origin of wine                        |
+15 - region_1           | Region of wine origin                          |
+16 - region_2           | sub-region of wine origin                      |
+17 - variety            | Type of wine                                   |
+18 - winery             | Name of the winery                             |
+
+
+
+## Load dataset
+Read data
 ```{r}
+#Read data
 raw <- read.csv('./data/wine-with-type-location.csv', header=TRUE, sep = ";")
+```
+
+Add rowid
+```{r}
 #add rowid
 raw <- tibble::rowid_to_column(raw, "ROWID")
 head(raw, 5)
-summary(raw)
+# summary(raw)
 
-#numeric data, last variable is quality which is dependent variable 
+#numeric data,  'quality' variable is dependent variable 
 data <- raw[c(1:12)]
 summary(data)
 ```
 
-# Structure of data
+## Structure of data
+No NAs or Nans or blanks found
 ```{r}
-#no NAs or Nans or blanks found
 str(data)
 nrow(data)
 ```
 
-
-# visualizations
+## Visualizations
 ```{r}
-
 #Melt data
 melt_data = melt(data, id.vars=c("ROWID"))
+
 #visualize spread of data
 ggplot(melt_data,  mapping = aes(x = value)) + geom_bar(fill = "#FF6666") + facet_wrap(~variable, scales = 'free_x')
-
 boxplot(data[,-c(1)])
+```
 
-# above shows data needs scaling and has outliers
+Above shows data needs scaling and has outliers
 
-#checking outliers
-
+## Checking outlier
+```{r}
 #3 outlier
 rosnerTest(data$volatile.acidity, k = 4, warn = F)
+
 #0 outliers
 rosnerTest(data$citric.acid, k = 4, warn = F)
+
 #4 outliers
 rosnerTest(data$residual.sugar, k = 4, warn = F)
+
 #4 outliers
 rosnerTest(data$chlorides, k = 4, warn = F)
+
 #4 outliers
 rosnerTest(data$free.sulfur.dioxide, k = 4, warn = F)
+
 #0 outliers
 rosnerTest(data$density, k = 4, warn = F)
+
 #2 outliers
 rosnerTest(data$pH, k = 4, warn = F)
+
 #4 outliers
 rosnerTest(data$sulphates, k = 4, warn = F)
+
 #1 outlier
 rosnerTest(data$alcohol, k = 4, warn = F)
 
 ```
 
-
-# correlations
+## Correlations
 ```{r}
-
 #corr of data
 corrmatrix <- cor(data)
 corrplot(corrmatrix, method = 'pie', type="upper")
-#moderate corr of 0.6ish for following
-#fixed acidity - citric acid
-#fixed acidity - density
-#free.sulfur.dioxide-total.sulfur.dioxide
+```
+Moderate corr of 0.6ish for following
+  1) fixed acidity - citric acid
+  2) fixed acidity - density
+  3) free.sulfur.dioxide - total.sulfur.dioxide
+
+## Removing fixed acidity and total.sulfur
+```{r}
 #we will remove fixed acidity and total.sulfur
 data <- data[-c(1,7)]
 
-
 #above are visualized and validated via plot
 plot(data)
-
-
 ```
 
-# ###########################################################
+
 # Data preparation
-# ###########################################################
+We replaced outliers with 5th and 95th percentile values.
 
 ```{r}
 #replace outliers with 5th and 95th percentile values
@@ -179,7 +200,6 @@ boxplot(data_scaled)
 
 ```
 
-
 ```{r}
 silhouette_score <- function(k){
   km <- kmeans(data, centers = k, nstart=25)
@@ -191,24 +211,23 @@ avg_sil <- sapply(k, silhouette_score)
 plot(k, type='b', avg_sil, xlab='Number of clusters', ylab='Average Silhouette Scores', frame=FALSE)
 ```
 
-Show Optimal number of clusters
+## Show Optimal number of clusters:
 ```{r}
 fviz_nbclust(data_scaled, kmeans, method='silhouette')
 ```
 
 
-# ###########################################################
 # PCA and reduction
-# ###########################################################
+
 ```{r}
 
-# ##### build pca using princomp
+# ##### Build pca using princomp
 data_pca1 <- princomp(data_scaled)
 
 #examine the importance of PCs
 summary(data_pca1)
 
-#inspect principal components
+# inspect principal components
 # loadings shows variance and and how much each variable contributes to each components
 loadings(data_pca1)
 fviz_pca_var(data_pca1,
@@ -216,14 +235,21 @@ fviz_pca_var(data_pca1,
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE     # Avoid text overlapping
              )
-# #### above shows that first 8 give us 89% of the variance
-# we don't see one variable being overbearing
+```
+
+Above shows that first 8 give us 89% of the variance
+We don't see one variable being overbearing
+
+```{r}
 #plot
 plot(data_pca1)
 # scree plot
 plot(data_pca1, type = "lines")
 #biplot
 biplot(data_pca1, col = c("gray", "black"))
+```
+
+```{r}
 # ###### using princomp first 10 give us 90% of the variance
 
 # ##### build pca using prcomp
@@ -243,36 +269,36 @@ fviz_pca_var(data_pca2,
              gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
              repel = TRUE     # Avoid text overlapping
              )
-#above shows first 7 account for 90% variance
-
-# ####PCA didnt really didnt help at all because of the number of components
-# We were hoping for a reduction down to 3 - 5 components
-#sigh..
-#stick with scaled data
-
-
 ```
+Above shows first 7 account for 90% variance
 
-# ###########################################################
+Please note: PCA didnt really didnt help at all because of the number of components. We were hoping for a reduction down to 3 - 5 components. stick with scaled data
+
+
 # Clustering using kmeans
-# ###########################################################
 
-# determine number of Clusters
+## determine number of Clusters
 
 ```{r}
-
 datatocluster <- data_scaled
+```
 
-# Silhouette method recommends 2
+Silhouette method recommends 2
+```{r}
 fviz_nbclust(datatocluster, kmeans, method = "silhouette")+
   labs(subtitle = "Silhouette method")
+```
 
-# Elbow method seems to show elbow at 4 or 5 
+Elbow method seems to show elbow at 4 or 5 
+```{r}
 fviz_nbclust(datatocluster, kmeans, method = "wss")+
   labs(subtitle = "Elbow method")
+```
 
+Gap statistic recommends 1
+```{r}
 #gap stat takes some time, uncomment to run it
-# Gap statistic recommends 1
+
 set.seed(123)
 #fviz_nbclust(datatocluster, kmeans, nstart = 25,  method = "gap_stat", nboot = 50) + labs(subtitle = "Gap statistic method")
 
@@ -280,13 +306,14 @@ set.seed(123)
 #lets also try nbclust using hierarchical clustering
 #recommends 4
 #NbClust(data = datatocluster, diss = NULL, distance = "euclidean",min.nc = 2, max.nc = 15, method = "ward.D")
-
-# ##### optimal clusters is 4
-k=4;
-
 ```
 
+Optimal clusters is 4
+```{r}
+k=4;
+```
 
+## kmeans
 ```{r}
 fit <- kmeans(datatocluster, k, nstart=25, iter.max=200)
 fit
@@ -294,18 +321,11 @@ fit
 sort(table(fit$cluster))
 ```
 
-# ###########################################################
-# visualize and analyze clusters generated by kmeans
-# ###########################################################
+## visualize and analyze clusters generated by kmeans
 ```{r}
-# ####PCA didnt really didnt help at all because of the number of components
-# We were hoping for a reduction down to 3 - 5 components
-#stick with scaled data
-
 datatovisualize1 <- data_scaled
 
-
-#clusplot below, but is useless as we performed analysis in 9 dimensions
+#clusplot below, but is not useful as we performed analysis in 9 dimensions
 #clusplot below uses first 2 dimensions which covers 47% variability
 #too much overlap in 2d
 #should really plot pairs or each variable against cluster
@@ -342,38 +362,42 @@ raw$cluster_kmeans=fit$cluster
 ```
 
 
-# ###########################################################
 # Clustering using Hierarchical Clustering
-# ###########################################################
-
+We implement a Ward’s hierarchical clustering procedure:
 ```{r}
-#we implement a Ward’s hierarchical clustering procedure:
 #distance matrix
 d <- dist(data_scaled, method = "euclidean") 
 #clustering
 h_clust <- hclust(d, method = "ward.D2") 
+```
 
-
-#display dendrogram with cut rects
+Display dendrogram with cut rects
+```{r}
 plot(h_clust)
 rect.hclust(h_clust , k = 5, border = 2:8)
 abline(h = 5, col = 'red')
+```
 
-#Display clusters in different colors
-
+Display clusters in different colors
+```{r}
 avg_dend_obj <- as.dendrogram(h_clust)
 avg_col_dend <- color_branches(avg_dend_obj, h =  40)
 plot(avg_col_dend)
+```
 
-library(dendextend)
-#extract clusters
+Extract clusters
+```{r}
 groups <- cutree(h_clust,k=5)
- 
-# count number of instances in each group
+```
+
+Count number of instances in each group
+```{r}
 data_df_cl <- mutate(data, cluster = groups)
 count(data_df_cl, cluster)
+```
 
-# We can analysis the quality and
+We can analysis the quality and
+```{r}
 summary(data_df_cl)
 
 ggplot(data_df_cl, aes(x=density, y = residual.sugar , color = factor(cluster))) + geom_point()
@@ -381,25 +405,23 @@ clusplot(data_df_cl, fit$cluster,cex=1,xlab=colnames(data_df_cl)[1],ylab=colname
 
 ```
 
-# ###################################################################
-# visualize and analyze clusters generated by hierarchical clustering
-# ###################################################################
+
+## visualize and analyze clusters generated by hierarchical clustering
 ```{r}
-# ####PCA didnt really didnt help at all because of the number of components
-# We were hoping for a reduction down to 3 - 5 components
-#sigh..
-#stick with scaled data
-
 datatovisualize2 <- data_scaled
+```
 
-# 2D representation of the Segmentation:
+2D representation of the Segmentation:
+```{r}
 clusplot(datatovisualize2, groups, main='Clusters')
+```
 
-#pairwise plot
-#pairwise keeps running and crashes
-#uncomment if need to run
-#pairs(datatovisualize2, col=c("red","blue","green","yellow")[groups])
+```{r}
+# pairwise plot
+# pairs(datatovisualize2, col=c("red","blue","green","yellow")[groups])
+```
 
+```{r}
 #put quality back in data
 datatovisualize2$quality <- raw$quality
 par(old.par)
@@ -428,3 +450,5 @@ save(raw, file = "./data/shiny.RData")
 ```
 
 
+# Shiny App
+Link: [https://pdwaggoner.shinyapps.io/App2-Iris_Data/]
