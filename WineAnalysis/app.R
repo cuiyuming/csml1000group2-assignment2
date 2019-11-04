@@ -15,7 +15,7 @@ library(shinyWidgets)
 
 alignCenter <- function(el) {
     htmltools::tagAppendAttributes(el,
-                                   style="margin-left:auto;margin-right:auto;"
+     style="margin-left:auto;margin-right:auto;"
     )
 }
 
@@ -31,7 +31,7 @@ ui <- fluidPage(
     # Sidebar panel for inputs ----
     sidebarPanel(
         prettyRadioButtons("disp", "Classification:",
-                           choices = c("Original",
+                           choices = c("Original(Quality)",
                                         "K-means clustering",
                                        "Hierarchical Clustering"),
                            animation = "pulse"),
@@ -74,9 +74,13 @@ ui <- fluidPage(
 
         # Show a plot of the generated distribution
         mainPanel(
-            plotOutput("plot1", height="500px")
+            tabsetPanel(type = "tabs",
+                tabPanel("Visual Output", plotOutput("plot1", height="500px")),
+                tabPanel("Numeric Output", tableOutput("table"))
+            )
         )
     
+  
 )
 
 # Define server logic required to draw a histogram
@@ -91,31 +95,23 @@ server <- function(input, output) {
         
         class.km <- as.factor(raw$cluster_kmeans)
         class.hc <- as.factor(raw$cluster_hclust)
-        raw$quality <- as.factor(raw$quali)
+        class.or <- as.factor(raw$quality)
+        raw$quality <- class.or
         raw[,22] <- class.km
         raw[,23] <- class.hc
 
-        
         df_ell <- data.frame()
         d <-raw[,  c(j1, j2, 13)]
          if (disp=="K-means clustering") {
-             class.km <- as.factor(raw$cluster_kmeans)
              d <- cbind(raw[,c(j1,j2)],class.km)
-        #     Groups <- levels(class.km)
          } else if (disp=="Hierarchical Clustering") {
-             class.hc <- as.factor(raw$cluster_hclust)
              d <- cbind(raw[,c(j1,j2)],class.hc)
-        #     Groups <- levels(class.hc)
          } 
-        # 
-        # shinyData.km$sigma <- sqrt(shinyData.km$withinss/shinyData.km$size/4)
-        # for(g in (1:4)){
-        #     M=rep(shinyData.km$sigma[g],2)
-        #     c=r.km$center[g,c(j1,j2)]
-        #     df_ell <- rbind(df_ell, cbind(as.data.frame(ellipse(0,scale=M,centre=c, level=alpha)), group=Groups[g]))
-        # }
-        # 
+    
+        df_ell <- raw[,  c(13:16, 18, 19)]
+        
         r <- list(df_ell=df_ell, d=d)
+        
         return(r)
     })
     
@@ -128,7 +124,7 @@ server <- function(input, output) {
         pl <- ggplot(data=d, aes_string(x=d[,1],y=d[,2], colour=d[,3])) + geom_point(size=2) +
             xlab(names(d)[1]) + ylab(names(d)[2]) + theme_bw() 
    
-        if (input$disp=="Original") {
+        if (input$disp=="Original(Quality)") {
             pl <- ggplot(data=d, aes_string(x=d[,1],y=d[,2], colour=d[,3])) + geom_point(size=2) +
                 xlab(names(d)[1]) + ylab(names(d)[2]) + theme_light()
         }else{
@@ -136,11 +132,18 @@ server <- function(input, output) {
                 xlab(names(d)[1]) + ylab(names(d)[2]) + theme_bw() 
         }
         
+
         if (input$ellipseGroup==TRUE) {
             pl <- pl + stat_ellipse(level=input$alpha, size=1) 
         }
         return(pl)
     })
+    
+    output$table <- renderTable({
+        r()
+    })
+    
+    
 }
 
 # Run the application 
