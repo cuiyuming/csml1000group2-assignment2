@@ -1,0 +1,12 @@
+name: WineAnalysis
+title: WineAnalysis
+username:
+account: yumingcui
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1417273
+bundleId: 2561739
+url: https://yumingcui.shinyapps.io/WineAnalysis/
+when: 1572834967.28458
+asMultiple: FALSE
+asStatic: FALSE

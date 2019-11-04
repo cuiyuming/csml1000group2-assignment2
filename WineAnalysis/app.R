@@ -85,7 +85,7 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-    load("../data/shiny.RData")
+    load("shiny.RData")
 
     r <- reactive({
         alpha <- input$alpha

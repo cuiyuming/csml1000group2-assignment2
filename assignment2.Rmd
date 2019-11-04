@@ -445,10 +445,10 @@ raw$cluster_hclust=groups
 #TODO save data to file to load in shiny
 
 
-save(raw, file = "./data/shiny.RData")
+save(raw, file = "./WineAnalysis/shiny.RData")
 
 ```
 
 
 # Shiny App
-Link: [https://pdwaggoner.shinyapps.io/App2-Iris_Data/]
+Link: [https://yumingcui.shinyapps.io/WineAnalysis/]
